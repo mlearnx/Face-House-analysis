@@ -8,6 +8,7 @@ Created on Tue Apr 18 11:28:20 2017
 from __future__ import print_function
 
 import mne
+import utils
 from mne import io
 import os
 import os.path as op
@@ -20,89 +21,39 @@ print(__doc__)
 
 overwrite = False
 
-subject = 'S01'
+subject = 'S08'
 data_path= '/home/claire/DATA/Data_Face_House/' + subject + '/EEG/'
-
-
-dir_decod = data_path + 'No_lowpass/'
-
-
-nolowpass_fname = subject + 'nolowpass -epo.fif'
-
-
-if not op.exists(dir_decod):
-    os.makedirs(dir_decod)
-
-
 
 #--------------------------------------------------------------------------------------
 # create raw.fif file : import chanloc, reref, rej bad electrodes, high pass filter
-#--------------------------------------------------------------------------------------
 
+# use ICA to remove EOG:
+# - import raw
+# - high pass at 1hz
+# - run ica
+#------------------------------
 raw_fname = subject + '-raw.fif'
 
 # Checks if preprocessing has already been done
-
 if op.exists(data_path + raw_fname) and not overwrite:
     print(raw_fname + ' already exists')
 print(subject)
 
-# function to import bdf file and do basic preprocessing :
-# - chanloc and chan info
-# - ref to mastoids
-def import_bdf(data_path, subject):
-    # import data
-    raw = io.read_raw_edf(data_path + subject + '_task.bdf',  stim_channel=-1, misc=['EXG6', 'EXG7', 'EXG8', 'GSR1', 'GSR2', 'Erg1', 'Erg2', 'Resp', 'Plet', 'Temp'],   preload=True)
-    raw.rename_channels(mapping={'E1H1\t//EXG1 HE l': 'EOG L', 'E2H2\t//EXG2 HE r': 'EOG R', 'E3LE\t//EXG3 LE r': 'EOG V L', 'E5M2\t//EXG5 M2 r': 'M2', 'E4M1\t//EXG4 M1 l': 'M1' })
-    raw.set_channel_types(mapping={'EOG L': 'eog', 'EOG R': 'eog', 'EOG V L': 'eog'})
-    
-    raw, _ =io.set_eeg_reference(raw, ref_channels=['M1', 'M2'])
-    raw.info['bads'] = ['M1', 'M2']
-    
-    # get eletrodes loc
-    montage= mne.channels.read_montage('standard_1020', path = '/home/claire/Appli/mne-python/mne/channels/data/montages/')
-    raw.set_montage(montage)
-    raw.interpolate_bads(reset_bads=False) # 
-    
-
-
-
-
 # get and save events
-events = mne.find_events(raw, verbose=True)
+raw, events = import_bdf(data_path, subject)
+
+# save events
 mne.write_events(data_path + subject  + '-eve.fif', events)
 
-# high pass filter
-
-raw.pick_types(eeg=True, eog=True)
-raw.filter(0.1, None, h_trans_bandwidth='auto', filter_length='auto', phase= 'zero',fir_window='hamming',  fir_design='firwin', n_jobs=6)    
-
-
+raw.filter(1.,40, fir_window='hamming', fir_design='firwin',  n_jobs=6)
 # plot
 raw.plot(events=events, duration =10, n_channels =64)
 
-#raw.info['bads'] = []
-
 raw.save(data_path + raw_fname)
-
-
-#------------------------------
-# use ICA to remove EOG:
-# - import raw
-# - high pass at 1hz
-# run ica
-#------------------------------
-
-#raw= mne.io.read_raw_fif(subject + '-raw.fif', preload=True)
-
-raw.filter(1.,40, fir_window='hamming', fir_design='firwin',  n_jobs=6)
-
 
 decim = 4  # we need sufficient statistics, not all time points -> saves time
 
-
 picks=mne.pick_types(raw.info, eeg=True, eog=True, exclude='bads')    
-
 eog_average = create_eog_epochs(raw, picks=picks).average()
 
 #eog_average = create_eog_epochs(raw, picks=picks).average(picks=picks[:-2])
@@ -121,11 +72,12 @@ eog_inds, scores = ica.find_bads_eog(eog_epochs)  # find via correlation
 ica.plot_scores(scores, exclude=eog_inds)  # look at r scores of components
 # we can see that only one component is highly correlated and that this
 # component got detected by our correlation analysis (red).
-
 ica.plot_sources(eog_average, exclude=eog_inds)  # look at source time course
+
 
 ica.plot_properties(eog_epochs, picks=eog_inds, psd_args={'fmax': 35.},
                     image_args={'sigma': 1.})
+
 print(ica.labels_)
 
 # show before/after ica removal plot
@@ -141,61 +93,62 @@ ica.exclude.extend(eog_inds)
 # on saving
 
 # uncomment this for reading and writing
-ica.save(subject + '-ica.fif')
+ica.save(data_path+ subject + '-ica.fif')
 # ica = read_ica('my-ica.fif')
 
+#----------------------------------------------------------------------------#
+# create epochs and evoked data
+#----------------------------------------------------------------------------#
 
-#-------------------------------------------------------------------------
-# Epoch data for evoked activity analysis:
-# - low pass filter raw file
-# - epoch
-# - apply ica to reject eog activity
-# - reject bad epochs
-#--------------------------------------------------------------------------
 
-dir_evoked = data_path + 'Lowpass/'
-lowpass_fname = subject + 'lowpass-epo.fif'
+dir_evoked = data_path + 'Evoked_Lowpass/'
+lowpass_fname = dir_evoked + subject + '-epo.fif'
 
 if not op.exists(dir_evoked):
     os.makedirs(dir_evoked)
 
+
+if op.exists(data_path + lowpass_fname) and not overwrite:
+    print(lowpass_fname + ' already exists')
+print(subject)
+
+
 # load raw file and apply ica to remove EOG IC
-raw = mne.io.read_raw_fif(subject + '-raw.fif', preload=True)
-events= mne.read_events(subject+'-eve.fif')
-
-ica = mne.preprocessing.read_ica(subject + '-ica.fif')
-ica.apply(raw)
-
+raw, events = utils.import_bdf(data_path, subject)
+#events= mne.read_events(data_path + subject+'-eve.fif')
+bad_chan = mne.io.read_raw_fif(data_path +subject + '-raw.fif')
+raw.info['bads'] = bad_chan.info['bads']
 # high pass filter
-
 raw.filter(0.1,45, fir_window='hamming', fir_design='firwin',  n_jobs=6)
-
+# reject eog using ica
+ica = mne.preprocessing.read_ica(data_path+ subject + '-ica.fif')
+ica.apply(raw)
 
 
 # specify epochs length
 tmin = -0.5
-tmax = 1.8
+tmax = 1.5
 
 epochs = mne.Epochs(raw, events, event_id= [101, 102, 201, 202], tmin=tmin, tmax=tmax,  baseline = None) # 
 
-epochs.plot(n_epochs=2, events=events)
-
+# inspect epochs !!
+epochs.plot(n_epochs=5, events=events, n_channels=64)
 epochs.drop_bad()
 
 epochs.event_id = {'stim/face' : 101, 'stim/house': 102, 'imag/face': 201, 'imag/house': 202}
 
-mne.Epochs.save(epochs, data_path + 'S01-epo.fif')
+epochs.decimate(decim =4) # decim from 1024 to 256
+
+mne.Epochs.save(epochs, dir_evoked + subject+ '-epo.fif')
 
 # average epochs and get Evoked datasets
 evokeds = [epochs[cond].average() for cond in ['stim/face', 'stim/house', 'imag/face', 'imag/house' ]]
 
 # save evoked data to disk
-mne.write_evokeds('S01_face_house-ave.fif', evokeds)
+mne.write_evokeds(dir_evoked + subject+'-ave.fif', evokeds)
 
 
-#-----------------------------------------
-# visualize evoked data
-#-----------------------------------------
+
 
 picks = mne.pick_types(evokeds[0].info, eeg=True, eog=False)
 evokeds[0].plot(spatial_colors=True, gfp=True, picks=picks)
