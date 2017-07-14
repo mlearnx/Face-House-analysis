@@ -21,7 +21,7 @@ print(__doc__)
 
 overwrite = False
 
-subject = 'S08'
+subject = 'S01'
 data_path= '/home/claire/DATA/Data_Face_House/' + subject + '/EEG/'
 
 #--------------------------------------------------------------------------------------
@@ -97,7 +97,7 @@ ica.save(data_path+ subject + '-ica.fif')
 # ica = read_ica('my-ica.fif')
 
 #----------------------------------------------------------------------------#
-# create epochs and evoked data
+# create high pass filter epochs and evoked data
 #----------------------------------------------------------------------------#
 
 
@@ -148,8 +148,6 @@ evokeds = [epochs[cond].average() for cond in ['stim/face', 'stim/house', 'imag/
 mne.write_evokeds(dir_evoked + subject+'-ave.fif', evokeds)
 
 
-
-
 picks = mne.pick_types(evokeds[0].info, eeg=True, eog=False)
 evokeds[0].plot(spatial_colors=True, gfp=True, picks=picks)
 
@@ -164,12 +162,50 @@ evokeds[3].plot(spatial_colors=True, gfp=True, picks=picks)
 
 
 
+#--------------------------------------#
+# create low pass filter only epoch files
+#--------------------------------------#
+subject = 'S11'
+data_path= '/home/claire/DATA/Data_Face_House/' + subject + '/EEG/'
+
+dir_nolow = data_path + 'No_Low_pass/'
+lowpass_fname = subject + '-epo.fif'
+
+if not op.exists(dir_nolow):
+    os.makedirs(dir_nolow)
 
 
+if op.exists(dir_nolow + lowpass_fname) and not overwrite:
+    print(lowpass_fname + ' already exists')
+print(subject)
 
 
+# load raw file and apply ica to remove EOG IC
+raw, events = utils.import_bdf(data_path, subject)
+#events= mne.read_events(data_path + subject+'-eve.fif')
+bad_chan = mne.io.read_raw_fif(data_path +subject + '-raw.fif')
+raw.info['bads'] = bad_chan.info['bads']
+
+raw.filter(0.1,None, fir_window='hamming', fir_design='firwin',  n_jobs=6)
+
+# reject eog using ica
+ica = mne.preprocessing.read_ica(data_path+ subject + '-ica.fif')
+ica.apply(raw)
 
 
+# specify epochs length
+tmin = -0.5
+tmax = 1.5
+
+epochs_nolow = mne.Epochs(raw, events, event_id= [101, 102, 201, 202], tmin=tmin, tmax=tmax,  baseline = None) # 
+
+# inspect epochs !!
+epochs_nolow.plot(n_epochs=5, events=events, n_channels=64)
+epochs_nolow.drop_bad()
+
+epochs_nolow.event_id = {'stim/face' : 101, 'stim/house': 102, 'imag/face': 201, 'imag/house': 202}
+
+mne.Epochs.save(epochs_nolow, dir_nolow + lowpass_fname)
 
 
 
