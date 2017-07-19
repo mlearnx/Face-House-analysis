@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 from scipy.io import loadmat
 from scipy.stats import sem
 
+ana_path = '/home/claire/DATA/Data_Face_House/Group Analysis/'
 
 a_vs_bs = ['stim-face_vs_stim-house_allchans', 'imag-face_vs_imag-house_allchans']
 scores={'stim-face_vs_stim-house_allchans':list(),'imag-face_vs_imag-house_allchans':list()}
@@ -50,7 +51,7 @@ plt.axvline(0.0, color='k', linestyle='--')
 plt.legend()
 plt.tight_layout()
 plt.show()
-plt.savefig('time_decoding_all_elec.pdf', bbox_to_inches='tight')
+plt.savefig(ana_path + 'time_decoding_all_elec.pdf', bbox_to_inches='tight')
 
 # plot individual subjects
 
