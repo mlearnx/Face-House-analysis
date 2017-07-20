@@ -37,7 +37,7 @@ for a_vs_b in a_vs_bs:
     mean_tf_scores[a_vs_b] = np.mean(tf_scores[a_vs_b], axis = 0)
     sem_tf_scores[a_vs_b] = sem(tf_scores[a_vs_b])
 
-sfreq= mat['sfreq']
+sfreq= 1024# mat['sfreq']
 centered_w_times = [-0.3, -0.1,  0.1,  0.3,  0.5,  0.7,  0.9,  1.1,  1.3]
                 
 # Plot time-frequency results across subject

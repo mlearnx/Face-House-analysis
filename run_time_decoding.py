@@ -45,9 +45,9 @@ def run_time_decoding(subject_id, cond1, cond2, event_id):
     epochs.pick_types(eeg=True, exclude='bads')
 
     # only look at occipital channels
-    #select_chans = [u'Iz', u'Oz', u'O1', u'O2',u'POz', u'PO1', u'PO3', u'PO2', u'PO4']
-    #ch_names=[ch_name.replace('', '') for ch_name in select_chans]
-    #epochs.pick_types(eeg=True).pick_channels(ch_names)
+    select_chans = [u'Iz', u'Oz', u'O1', u'O2', u'O3', u'PO7', u'PO8', u'POz', u'PO1', u'PO3', u'PO2', u'PO4']
+    ch_names=[ch_name.replace('', '') for ch_name in select_chans]
+    epochs.pick_types(eeg=True).pick_channels(ch_names)
     
     # fit and time decoder
     X = epochs.get_data()  # MEG signals: n_epochs, n_channels, n_times
@@ -65,7 +65,7 @@ def run_time_decoding(subject_id, cond1, cond2, event_id):
     a_vs_b = '%s_vs_%s' %(cond1,cond2)
     print 'a_vs_b = %s' %a_vs_b    
     
-    fname_td= os.path.join(data_path, '%s-td-auc-%s_allchans.mat' %(subject, a_vs_b))
+    fname_td= os.path.join(data_path, '%s-td-auc-%s_occipital_chans.mat' %(subject, a_vs_b))
     print 'Saving %s' %fname_td
     from scipy.io import savemat
     savemat(fname_td, {'scores': scores,
@@ -78,7 +78,10 @@ parallel(run_func(subject_id, 'stim-face', 'stim-house', {'stim/face':101, 'stim
         for subject_id in [1,2,3,4,5,6,8,9,10,11])
 parallel(run_func(subject_id, 'imag-face', 'imag-house', {'imag/face':201, 'imag/house':202})    
         for subject_id in [1,2,3,4,5,6,8,9,10,11])
-    
+parallel(run_func(subject_id, 'imag-face', 'stim-face', {'imag/face':201, 'stim/face':101})    
+        for subject_id in [1,2,3,4,5,6,8,9,10,11])    
+parallel(run_func(subject_id, 'imag-house', 'stim-house', {'imag/house':202, 'stim/house':102})    
+        for subject_id in [1,2,3,4,5,6,8,9,10,11])    
 
     
     

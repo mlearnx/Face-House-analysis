@@ -85,7 +85,7 @@ def run_csp_timefreq_decoding(subject_id, cond1, cond2, event_id):
         w_size = n_cycles / ((fmax + fmin) / 2.)  # in seconds
     
         # Apply band-pass filter to isolate the specified frequencies
-        raw_filter = raw.copy().filter(fmin, fmax, n_jobs=6, fir_design='firwin')
+        raw_filter = raw.copy().filter(fmin, fmax, n_jobs=1, fir_design='firwin')
     
         # Extract epochs from filtered data, padded by window size
         epochs = Epochs(raw_filter, events, event_id, tmin - w_size, tmax + w_size,
@@ -101,7 +101,7 @@ def run_csp_timefreq_decoding(subject_id, cond1, cond2, event_id):
         # Save mean scores over folds for each frequency and time window
         freq_scores[freq] = np.mean(cross_val_score(estimator=clf, X=X, y=y,
                                                     scoring='roc_auc', cv=cv,
-                                                    n_jobs=6), axis=0)
+                                                    n_jobs=1), axis=0)
     a_vs_b = '%s_vs_%s'%(cond1, cond2)
     fname_csp = os.path.join(data_path, '%s-csp-freq-%s.mat' %(subject, a_vs_b))
     
@@ -145,7 +145,7 @@ def run_csp_timefreq_decoding(subject_id, cond1, cond2, event_id):
             # Save mean scores over folds for each frequency and time window
             tf_scores[freq, t] = np.mean(cross_val_score(estimator=clf, X=X, y=y,
                                                          scoring='roc_auc', cv=cv,
-                                                         n_jobs=6), axis=0)
+                                                         n_jobs=1), axis=0)
     a_vs_b = '%s_vs_%s'%(cond1, cond2)
     fname_csp_tfr = os.path.join(data_path, '%s-csp-time-freq-%s.mat' %(subject, a_vs_b))
     
@@ -153,7 +153,7 @@ def run_csp_timefreq_decoding(subject_id, cond1, cond2, event_id):
     savemat(fname_csp_tfr, {'scores':tf_scores, 'freqs': freqs, 'sfreq': sfreq, 'centered_w_times': centered_w_times })
 
 
-parallel, run_func, _=parallel_func(run_csp_timefreq_decoding, n_jobs=3)
+parallel, run_func, _=parallel_func(run_csp_timefreq_decoding, n_jobs=6)
 parallel(run_func(subject_id, 'imag-face', 'imag-house', {'imag/face':201, 'imag/house':202})    
         for subject_id in [1,2,3,4,5,6,8,9,10,11])
 #parallel(run_func(subject_id, 'imagery', 'perception', {'imag/face':201, 'imag/house':202, 'stim/face': 101, 'stim/house':102})    
