@@ -12,54 +12,78 @@ import mne
 print(__doc__)
 
 
+import os
+import numpy as np
+from scipy.io import loadmat
+from scipy.stats import sem
 
 
-###############################################################################
-    # Now we can compute the Global Field Power
-    #
-    # Then we prepare a bootstrapping function to estimate confidence intervals
+
+
+
+ana_path = '/home/claire/DATA/Data_Face_House/Group Analysis/'
+
+condition = 'perception'#, 'imag-face_vs_imag-house'
+er_freqrange ={'perception':list()} #,'imag-face_vs_imag-house':list()
+
+gfp_all = {'Theta':list(), 'Alpha':list(), 'Beta': list(), 'Gamma':list()}
+times_all = {'Theta':list(), 'Alpha':list(), 'Beta': list(), 'Gamma':list()}
+ci_low = {'Theta':list(), 'Alpha':list(), 'Beta': list(), 'Gamma':list()}
+ci_up = {'Theta':list(), 'Alpha':list(), 'Beta': list(), 'Gamma':list()}
+
+iter_freqs = [ 'Theta', 'Alpha', 'Beta', 'Gamma']
+
+
+for band in iter_freqs:
     
-rng = np.random.RandomState(42)
+    for subject_id in [1, 2, 3, 4, 5, 6, 8, 9, 10, 11]:
+        subject = 'S%02d' %subject_id
+        data_path = os.path.join('/home/claire/DATA/Data_Face_House/' + subject +'/EEG/No_Low_pass')
+        
+        gfp_fname = os.path.join(data_path, '%s-gfp-%s-%s.mat'% (subject, condition, band))
+        mat = loadmat(gfp_fname)
+        gfp_all[band].append(mat['gfp'])
+        times_all[band].append(mat['times'])
+        ci_up[band].append(mat['ci_up'])
+        ci_low[band].append(mat['ci_low'])
 
-def get_gfp_ci(average, n_bootstraps=2000):
-    """get confidence intervals from non-parametric bootstrap"""
-    indices = np.arange(len(average.ch_names), dtype=int)
-    gfps_bs = np.empty((n_bootstraps, len(average.times)))
-    for iteration in range(n_bootstraps):
-        bs_indices = rng.choice(indices, replace=True, size=len(indices))
-        gfps_bs[iteration] = np.sum(average.data[bs_indices] ** 2, 0)
-    gfps_bs = mne.baseline.rescale(gfps_bs, average.times, baseline=(None, 0))
-    ci_low, ci_up = np.percentile(gfps_bs, (2.5, 97.5), axis=0)
-    return ci_low, ci_up
+# average across subjects
 
-##############################################################################
-# Now we can track the emergence of spatial patterns compared to baseline
-# for each frequency band
-#
+mean_gfp, mean_ci_up, mean_ci_low = dict(), dict(), dict()
+for band in iter_freqs:
+    mean_gfp[band] = np.mean(gfp_all[band], axis = 0)
+    mean_ci_up[band]=np.mean(ci_up[band], axis = 0)
+    mean_ci_low[band]=np.mean(ci_low[band], axis = 0)
 
+
+# Plot group results
+freqs = [
+        ('Theta', 4, 7),
+        ('Alpha', 8, 12),
+        ('Beta', 13, 25),
+        ('Gamma', 30, 45), 
+            ]
 
 fig, axes = plt.subplots(4, 1, figsize=(10, 7), sharex=True, sharey=True)
 colors = plt.cm.viridis((0.1, 0.35, 0.75, 0.95))
-for ((freq_name, fmin, fmax), average), color, ax in zip(
-        frequency_map, colors, axes.ravel()[::-1]):
-    times = average.times * 1e3
-    gfp = np.sum(average.data ** 2, axis=0)
-    gfp = mne.baseline.rescale(gfp, times, baseline=(None, 0))
-    ax.plot(times, gfp, label=freq_name, color=color, linewidth=2.5)
+for ((band, fmin, fmax)), color, ax in zip(
+        freqs, colors, axes.ravel()[::-1]):
+    times = times_all[band][0]
+    ax.plot(times, mean_gfp[band], label=band, color=color, linewidth=2.5)
     ax.plot(times, np.zeros_like(times), linestyle='--', color='red',
             linewidth=1)
-    ci_low, ci_up = get_gfp_ci(average)
-    ax.fill_between(times, gfp + ci_up, gfp - ci_low, color=color,
+    ax.fill_between(times[0], mean_gfp[band][0] + mean_ci_up[band][0], mean_gfp[band][0] - mean_ci_low[band][0], color=color,
                     alpha=0.3)
     ax.grid(True)
-    ax.set_ylabel('GFP')
-    ax.annotate('%s (%d-%dHz)' % (freq_name, fmin, fmax),
+    ax.set_ylabel('Mean GFP Group')
+    ax.annotate('%s (%d-%dHz)' % (band, fmin, fmax),
                 xy=(0.95, 0.8),
                 horizontalalignment='right',
                 xycoords='axes fraction')
-    ax.set_xlim(-1050, 3050)
+    ax.set_xlim(-500, 1500)
 
 axes.ravel()[-1].set_xlabel('Time [ms]')
-plt.title('Event related dynamic in frequecy bands %s  %s' % (subject, condition) )
+axes.ravel()[-1].set_ylim([-3, 5])
+#ax.set_title('Group average event related dynamic in frequency bands %s' % (condition) )
 
-plt.savefig(ana_path + 'csp_freq_decoding_%s.pdf' %a_vs_b, bbox_to_inches='tight')
+plt.savefig(ana_path + 'group-tf-gfp-%s.pdf' %condition, bbox_to_inches='tight')
