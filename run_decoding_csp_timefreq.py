@@ -19,6 +19,8 @@ signals.
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+import os.path as op
+
 import mne
 from mne import io
 
@@ -39,8 +41,13 @@ def run_csp_timefreq_decoding(subject_id, cond1, cond2, event_id):
 
     subject = "S%02d" %subject_id
     data_path= '/home/claire/DATA/Data_Face_House/' + subject + '/EEG/No_Low_pass/'
+    ana_path = data_path 
     events_path = '/home/claire/DATA/Data_Face_House/' + subject + '/EEG/'
     
+        
+    if not op.exists(ana_path):
+        os.makedirs(ana_path)
+        
     print '-----Now Processing %s -------' %subject
 
     raw = mne.io.read_raw_fif(data_path+subject+'-raw.fif', preload=True)
@@ -54,16 +61,18 @@ def run_csp_timefreq_decoding(subject_id, cond1, cond2, event_id):
     cv = StratifiedKFold(n_splits=n_splits, shuffle=True)
 
     # Classification & Time-frequency parameters
-    tmin, tmax = -0.5, 1.5
-    n_cycles = 12.  # how many complete cycles: used to define window size
+    tmin, tmax = -0.5, 1
     min_freq = 2
-    max_freq = 30 #25.
-    n_freqs = 10 #8  # how many frequency bins to use
-
+    max_freq = 25 #25.
+    n_freqs = 8 #8  # how many frequency bins to use
+    n_cycles = 10.  # how many complete cycles: used to define window size
+    
     # Assemble list of frequency range tuples
     freqs = np.linspace(min_freq, max_freq, n_freqs)  # assemble frequencies
     freq_ranges = list(zip(freqs[:-1], freqs[1:]))  # make freqs list of tuples
     
+    
+
     # Infer window spacing from the max freq and number of cycles to avoid gaps
     window_spacing = (n_cycles / np.max(freqs) / 2.)
     centered_w_times = np.arange(tmin, tmax, window_spacing)[1:]
@@ -101,9 +110,9 @@ def run_csp_timefreq_decoding(subject_id, cond1, cond2, event_id):
         # Save mean scores over folds for each frequency and time window
         freq_scores[freq] = np.mean(cross_val_score(estimator=clf, X=X, y=y,
                                                     scoring='roc_auc', cv=cv,
-                                                    n_jobs=1), axis=0)
+                                                    n_jobs=3), axis=0)
     a_vs_b = '%s_vs_%s'%(cond1, cond2)
-    fname_csp = os.path.join(data_path, '%s-csp-freq-%s.mat' %(subject, a_vs_b))
+    fname_csp = os.path.join(ana_path, '%s-csp-freq-%s.mat' %(subject, a_vs_b))
     
     from scipy.io import savemat
     savemat(fname_csp, {'scores':freq_scores, 'freqs': freqs })
@@ -122,14 +131,14 @@ def run_csp_timefreq_decoding(subject_id, cond1, cond2, event_id):
         w_size = n_cycles / ((fmax + fmin) / 2.)  # in seconds
     
         # Apply band-pass filter to isolate the specified frequencies
-        raw_filter = raw.copy().filter(fmin, fmax, n_jobs=1, fir_design='firwin')
+        raw_filter = raw.copy().filter(fmin, fmax, n_jobs=3, fir_design='firwin')
     
         # Extract epochs from filtered data, padded by window size
         epochs = Epochs(raw_filter, events, event_id, tmin - w_size, tmax + w_size,
                         proj=False, baseline=None, preload=True)
         epochs.drop_bad()
-        #mne.epochs.combine_event_ids(epochs, ['stim/face', 'stim/house'], {'stim':100}, copy=False)    
-        #mne.epochs.combine_event_ids(epochs, ['imag/face', 'imag/house'], {'imag':200}, copy=False)
+        #mne.epochs.combine_event_ids(epochs, ['stim/face', 'imag/face'], {'stim':100}, copy=False)    
+        #mne.epochs.combine_event_ids(epochs, ['stim/house', 'imag/house'], {'imag':200}, copy=False)
         y = le.fit_transform(epochs.events[:, 2])
     
         # Roll covariance, csp and lda over time
@@ -145,16 +154,16 @@ def run_csp_timefreq_decoding(subject_id, cond1, cond2, event_id):
             # Save mean scores over folds for each frequency and time window
             tf_scores[freq, t] = np.mean(cross_val_score(estimator=clf, X=X, y=y,
                                                          scoring='roc_auc', cv=cv,
-                                                         n_jobs=1), axis=0)
+                                                         n_jobs=3), axis=0)
     a_vs_b = '%s_vs_%s'%(cond1, cond2)
-    fname_csp_tfr = os.path.join(data_path, '%s-csp-time-freq-%s.mat' %(subject, a_vs_b))
+    fname_csp_tfr = os.path.join(ana_path, '%s-csp-time-freq-%s_epoch.mat' %(subject, a_vs_b))
     
     from scipy.io import savemat
     savemat(fname_csp_tfr, {'scores':tf_scores, 'freqs': freqs, 'sfreq': sfreq, 'centered_w_times': centered_w_times })
 
 
-parallel, run_func, _=parallel_func(run_csp_timefreq_decoding, n_jobs=6)
-parallel(run_func(subject_id, 'imag-face', 'imag-house', {'imag/face':201, 'imag/house':202})    
-        for subject_id in [1,2,3,4,5,6,8,9,10,11])
-#parallel(run_func(subject_id, 'imagery', 'perception', {'imag/face':201, 'imag/house':202, 'stim/face': 101, 'stim/house':102})    
+parallel, run_func, _=parallel_func(run_csp_timefreq_decoding, n_jobs=1)
+#parallel(run_func(subject_id, 'imag-face', 'imag-house', {'imag/face':201, 'imag/house':202})    
 #        for subject_id in [1,2,3,4,5,6,8,9,10,11])
+parallel(run_func(subject_id, 'stim-face', 'stim-house', {'stim/face': 101, 'stim/house':102})    
+        for subject_id in [1,2,3,4,5,6,8,9,10,11])

@@ -45,13 +45,40 @@ def run_time_decoding(subject_id, cond1, cond2, event_id):
     epochs.pick_types(eeg=True, exclude='bads')
 
     # only look at occipital channels
-    select_chans = [u'Iz', u'Oz', u'O1', u'O2', u'O3', u'PO7', u'PO8', u'POz', u'PO1', u'PO3', u'PO2', u'PO4']
-    ch_names=[ch_name.replace('', '') for ch_name in select_chans]
-    epochs.pick_types(eeg=True).pick_channels(ch_names)
+#    select_chans = [u'Iz', u'Oz', u'O1', u'O2', u'O3', u'PO7', u'PO8', u'POz', u'PO1', u'PO3', u'PO2', u'PO4']
+    #select_chans = [ u'PO7', u'PO8']
+    #select_chans = [ u'Cz', u'FPz']
+
+    #ch_names=[ch_name.replace('', '') for ch_name in select_chans]
+    #epochs.pick_types(eeg=True).pick_channels(ch_names)
     
+    # average group of 4 trials
+    
+    data_cond1 =  epochs['stim/face'].get_data()
+    data_cond2 = epochs['stim/house'].get_data()
+    
+    mean_cond1=[]
+    ind_trial = 0
+    while ind_trial<= len(data_cond1):
+        mean_cond1.append(mean(data_cond1[ind_trial:(ind_trial+4)], 0))
+        print ind_trial
+        ind_trial+=5
+    
+    mean_cond2=[]
+    ind_trial = 0
+    while ind_trial<= len(data_cond2):
+        mean_cond2.append(mean(data_cond2[ind_trial:(ind_trial+4)], 0))
+        print ind_trial
+        ind_trial+=5
+    
+    X=[]
+    # create variable for decoding
+    X = mean_cond1 + mean_cond2
+    X=np.array(X)
+    y = np.array([0] * len(mean_cond1) + [1] * len(mean_cond2))     
     # fit and time decoder
-    X = epochs.get_data()  # MEG signals: n_epochs, n_channels, n_times
-    y = epochs.events[:, 2]  # target: Audio left or right
+    #X = epochs.get_data()  # MEG signals: n_epochs, n_channels, n_times
+    #y = epochs.events[:, 2]  # target: Audio left or right
 
     clf = make_pipeline(StandardScaler(), LogisticRegression())
 
@@ -65,7 +92,7 @@ def run_time_decoding(subject_id, cond1, cond2, event_id):
     a_vs_b = '%s_vs_%s' %(cond1,cond2)
     print 'a_vs_b = %s' %a_vs_b    
     
-    fname_td= os.path.join(data_path, '%s-td-auc-%s_occipital_chans.mat' %(subject, a_vs_b))
+    fname_td= os.path.join(data_path, '%s-td-auc-%s.mat' %(subject, a_vs_b))
     print 'Saving %s' %fname_td
     from scipy.io import savemat
     savemat(fname_td, {'scores': scores,
@@ -73,15 +100,11 @@ def run_time_decoding(subject_id, cond1, cond2, event_id):
     
     
     
-parallel, run_func, _=parallel_func(run_time_decoding, n_jobs=6)
+parallel, run_func, _=parallel_func(run_time_decoding, n_jobs=1)
 parallel(run_func(subject_id, 'stim-face', 'stim-house', {'stim/face':101, 'stim/house':102})    
         for subject_id in [1,2,3,4,5,6,8,9,10,11])
 parallel(run_func(subject_id, 'imag-face', 'imag-house', {'imag/face':201, 'imag/house':202})    
         for subject_id in [1,2,3,4,5,6,8,9,10,11])
-parallel(run_func(subject_id, 'imag-face', 'stim-face', {'imag/face':201, 'stim/face':101})    
-        for subject_id in [1,2,3,4,5,6,8,9,10,11])    
-parallel(run_func(subject_id, 'imag-house', 'stim-house', {'imag/house':202, 'stim/house':102})    
-        for subject_id in [1,2,3,4,5,6,8,9,10,11])    
 
     
     
