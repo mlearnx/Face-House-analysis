@@ -16,11 +16,11 @@ from mne.time_frequency import AverageTFR
 
 ana_path = '/home/claire/DATA/Data_Face_House/Group Analysis/'
 
-a_vs_bs = ['imag-face_vs_imag-house'] #, 'imag-face_vs_imag-house'
-tf_scores={'imag-face_vs_imag-house':list()} #,'imag-face_vs_imag-house':list()
+a_vs_bs = ['stim-face_vs_stim-house'] #, 'imag-face_vs_imag-house'
+tf_scores={'stim-face_vs_stim-house':list()} #,'imag-face_vs_imag-house':list()
 
 
-for subject_id in [1, 2, 3, 4, 5, 6, 8, 9, 10, 11]:
+for subject_id in [1, 2, 3, 4, 5, 6, 8,9,10, 11]:
     subject = 'S%02d' %subject_id
     data_path = os.path.join('/home/claire/DATA/Data_Face_House/' + subject +'/EEG/No_Low_pass')
     
@@ -31,15 +31,15 @@ for subject_id in [1, 2, 3, 4, 5, 6, 8, 9, 10, 11]:
         tf_scores[a_vs_b].append(mat['scores'])
 
 # average scores across subjects
-freqs = mat['freqs'][0]
+freqs = 1024#mat['freqs'][0]
 mean_tf_scores, sem_tf_scores = dict(), dict()
 for a_vs_b in a_vs_bs:
     mean_tf_scores[a_vs_b] = np.mean(tf_scores[a_vs_b], axis = 0)
     sem_tf_scores[a_vs_b] = sem(tf_scores[a_vs_b])
 
-sfreq= 1024# mat['sfreq']
+sfreq= 1024#mat['sfreq'][0]
 centered_w_times = [-0.3, -0.1,  0.1,  0.3,  0.5,  0.7,  0.9,  1.1,  1.3]
-                
+#centered_w_times = [-0.3, -0.1,  0.1,  0.3,  0.5,  0.7,  0.9]     
 # Plot time-frequency results across subject
 for  a_vs_b in  a_vs_bs:
     # Set up time frequency object
@@ -55,7 +55,7 @@ plt.savefig(ana_path + 'csp_time_freq_decoding_%s.pdf' %a_vs_b, bbox_to_inches='
 ###############################################################################
 # Plot frequency results
 
-f_scores={'imag-face_vs_imag-house':list()} #,'imag-face_vs_imag-house':list()
+f_scores={''stim-face_vs_stim-house':list()} #,'imag-face_vs_imag-house':list()
 
 for subject_id in [1, 2, 3, 4, 5, 6, 8, 9, 10, 11]:
     subject = 'S%02d' %subject_id

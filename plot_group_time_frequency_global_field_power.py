@@ -23,15 +23,15 @@ from scipy.stats import sem
 
 ana_path = '/home/claire/DATA/Data_Face_House/Group Analysis/'
 
-condition = 'perception'#, 'imag-face_vs_imag-house'
-er_freqrange ={'perception':list()} #,'imag-face_vs_imag-house':list()
+condition = 'imagery'#, 'imag-face_vs_imag-house'
+er_freqrange ={'imagery':list()} #,'imag-face_vs_imag-house':list()
 
-gfp_all = {'Theta':list(), 'Alpha':list(), 'Beta': list(), 'Gamma':list()}
-times_all = {'Theta':list(), 'Alpha':list(), 'Beta': list(), 'Gamma':list()}
-ci_low = {'Theta':list(), 'Alpha':list(), 'Beta': list(), 'Gamma':list()}
-ci_up = {'Theta':list(), 'Alpha':list(), 'Beta': list(), 'Gamma':list()}
+gfp_all = {'Delta': list(), 'Theta':list(), 'Alpha':list(), 'Beta': list(), 'Gamma':list()}
+times_all = {'Delta': list(),'Theta':list(), 'Alpha':list(), 'Beta': list(), 'Gamma':list()}
+ci_low = {'Delta': list(),'Theta':list(), 'Alpha':list(), 'Beta': list(), 'Gamma':list()}
+ci_up = {'Delta': list(),'Theta':list(), 'Alpha':list(), 'Beta': list(), 'Gamma':list()}
 
-iter_freqs = [ 'Theta', 'Alpha', 'Beta', 'Gamma']
+iter_freqs = [ 'Delta', 'Theta', 'Alpha', 'Beta', 'Gamma']
 
 
 for band in iter_freqs:
@@ -57,15 +57,15 @@ for band in iter_freqs:
 
 
 # Plot group results
-freqs = [
+freqs = [('Delta', 1, 3), 
         ('Theta', 4, 7),
         ('Alpha', 8, 12),
         ('Beta', 13, 25),
         ('Gamma', 30, 45), 
             ]
 
-fig, axes = plt.subplots(4, 1, figsize=(10, 7), sharex=True, sharey=True)
-colors = plt.cm.viridis((0.1, 0.35, 0.75, 0.95))
+fig, axes = plt.subplots(5, 1, figsize=(10, 7), sharex=True, sharey=True)
+colors = plt.cm.viridis((0.08, 0.2, 0.35, 0.75, 0.95))
 for ((band, fmin, fmax)), color, ax in zip(
         freqs, colors, axes.ravel()[::-1]):
     times = times_all[band][0]
@@ -83,7 +83,7 @@ for ((band, fmin, fmax)), color, ax in zip(
     ax.set_xlim(-500, 1500)
 
 axes.ravel()[-1].set_xlabel('Time [ms]')
-axes.ravel()[-1].set_ylim([-3, 5])
+#axes.ravel()[-1].set_ylim([-2, 3])
 #ax.set_title('Group average event related dynamic in frequency bands %s' % (condition) )
 
 plt.savefig(ana_path + 'group-tf-gfp-%s.pdf' %condition, bbox_to_inches='tight')
