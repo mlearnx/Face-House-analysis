@@ -13,8 +13,8 @@ from scipy.stats import sem
 
 ana_path = '/home/claire/DATA/Data_Face_House/Group Analysis/'
 
-a_vs_bs = ['stim-face_vs_stim-house_CZ_FPZ', 'imag-face_vs_imag-house_CZ_FPZ']
-scores={'stim-face_vs_stim-house_CZ_FPZ':list(),'imag-face_vs_imag-house_CZ_FPZ':list()}
+a_vs_bs = ['stim-face_vs_stim-house_ave_4_trials', 'imag-face_vs_imag-house_ave_4_trials']
+scores={'stim-face_vs_stim-house_ave_4_trials':list(),'imag-face_vs_imag-house_ave_4_trials': list()}
 
 for subject_id in [1, 2, 3, 4, 5, 6, 8, 9, 10, 11]:
     subject = 'S%02d' %subject_id
@@ -51,7 +51,7 @@ plt.axvline(0.0, color='k', linestyle='--')
 plt.legend()
 plt.tight_layout()
 plt.show()
-plt.savefig(ana_path + 'time_decoding_cz_fpz_chans.pdf', bbox_to_inches='tight')
+plt.savefig(ana_path + 'time_decoding_average_4_trials.pdf', bbox_to_inches='tight')
 
 
 
