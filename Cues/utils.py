@@ -32,3 +32,6 @@ def import_bdf(data_path, subject):
     raw.pick_types(raw.info, eeg=True, eog=True, exclude='bads')    
 
     return raw, events
+    
+
+

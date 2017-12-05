@@ -21,7 +21,7 @@ print(__doc__)
 
 overwrite = False
 
-subject = 'S01'
+subject = 'S11'
 data_path= '/home/claire/DATA/Data_Face_House/' + subject + '/EEG/'
 
 #--------------------------------------------------------------------------------------
@@ -129,7 +129,7 @@ ica.apply(raw)
 tmin = -0.5
 tmax = 1.5
 
-epochs = mne.Epochs(raw, events, event_id= [101, 102, 201, 202], tmin=tmin, tmax=tmax,  baseline = None) # 
+epochs = mne.Epochs(raw, events, event_id= [101, 102, 201, 202], tmin=tmin, tmax=tmax,  baseline = None, preload=True) # 
 
 # inspect epochs !!
 epochs.plot(n_epochs=5, events=events, n_channels=64)
@@ -165,7 +165,7 @@ evokeds[3].plot(spatial_colors=True, gfp=True, picks=picks)
 #--------------------------------------#
 # create low pass filter only epoch files
 #--------------------------------------#
-subject = 'S01'
+subject = 'S11'
 data_path= '/home/claire/DATA/Data_Face_House/' + subject + '/EEG/'
 
 dir_nolow = data_path + 'No_Low_pass/'
