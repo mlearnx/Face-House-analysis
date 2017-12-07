@@ -31,6 +31,7 @@ exclude = [7]
 
 event_id = {'stim/face' :101, 'stim/house':102, 'imag/face':201, 'imag/house':202}
 
+ana_path = '/home/claire/DATA/Data_Face_House_new_proc'
 
 
 
@@ -41,13 +42,13 @@ conditions = ['stim', 'imag']
 stimuli = ['face', 'house']
 freq_range = [['delta', 2, 4], ['theta', 4, 6],['low_alpha', 6, 8], ['alpha', 10, 12], ['beta', 15, 20],['low_gamma', 30, 45], ['gamma', 70,100]]
 
-chan_range= ['POz', 'PO4', 'PO8', 'PO3', 'PO7']
+#chan_range= ['POz', 'PO4', 'PO8', 'PO3', 'PO7', 'O1', 'O2', 'Oz']
 
 for subject_id in range(1, 26):#,12):
     if subject_id in exclude:
         continue
     subject = 'S%02d' %subject_id
-    data_path=  os.path.join('/home/claire/DATA/Data_Face_House_new_proc', subject, 'EEG/Preproc')
+    data_path =  os.path.join(ana_path, subject , 'EEG', 'New_Preproc')
     dir_save= os.path.join(data_path, 'CSP-Timefreq')
 
     if not op.exists(dir_save):
@@ -55,11 +56,11 @@ for subject_id in range(1, 26):#,12):
         
     print '-----Now Processing %s -------' %subject   
     
-    fname_in = os.path.join(data_path, '%s-clean-epo.fif' %subject)
+    fname_in = os.path.join(data_path, '%s-causal-highpass-2Hz-epo.fif' %subject)
     epochs=mne.read_epochs(fname_in)
 
 # select channels
-    epochs.pick_channels(chan_range)
+    #epochs.pick_channels(chan_range)
 # -----------------------------------
 # Power spectrum density
 # -----------------------------------
@@ -68,7 +69,7 @@ for subject_id in range(1, 26):#,12):
         for stim in stimuli:
             for freq, fmin, fmax in freq_range:
                     eve_id = cond + '/' + stim
-                    cond_epochs= epochs[eve_id].copy().crop(0, 1.5)
+                    cond_epochs= epochs[eve_id].copy().crop(0, 1)
                     
                     cond_psd = psd_welch(cond_epochs, fmin=fmin, fmax=fmax)
                     
@@ -78,7 +79,7 @@ for subject_id in range(1, 26):#,12):
 df=pd.DataFrame(test, columns=['Subject', 'Modality', 'Stim',  'Freq', 'Median'])
 df=df.set_index('Subject')
 
-df.to_csv('power_density_all_freq_stim_type_occ_elec.csv')
+df.to_csv(os.path.join(ana_path, 'power_density_all_freq_stim_type.csv'))
 
 
 #

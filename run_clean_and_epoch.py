@@ -37,7 +37,7 @@ baseline = (None, 0)
 exclude = [7]
 
 
-subject_id =25
+subject_id =5
 
 subject = 'S%02d' %subject_id
 data_path = os.path.join(ana_path, subject , 'EEG', 'New_Preproc')
