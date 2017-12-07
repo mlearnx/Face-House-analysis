@@ -34,10 +34,10 @@ for subject_id in range(1,26):
     data_path =  os.path.join(ana_path, subject , 'EEG', 'New_Preproc')
     fname_in = os.path.join(data_path, '%s-causal-highpass-2Hz-epo.fif' %subject)
     epochs=mne.read_epochs(fname_in)
-    #epochs.interpolate_bads()
-    #all_epochs.append(epochs)
+    epochs.interpolate_bads()
+    all_epochs.append(epochs)
     
-    #epochs = epochs=mne.concatenate_epochs(all_epochs)
+    epochs = epochs=mne.concatenate_epochs(all_epochs)
     
     epochs=epochs[cond]
     

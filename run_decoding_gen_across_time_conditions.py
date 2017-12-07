@@ -18,8 +18,7 @@ from sklearn.preprocessing import LabelEncoder
 
 print(__doc__)
 
-
-ana_path = ana_path = '/home/claire/DATA/Data_Face_House_new_proc'
+ana_path = '/home/claire/DATA/Data_Face_House_new_proc'
 
 
 exclude = [7]  # Excluded subjects
