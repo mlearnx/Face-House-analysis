@@ -40,6 +40,7 @@ for subject_id in range(12, 26):
     
     
     all_data= all_data.append(data[data['scale1'] != '--'])
-
-
+    
+    all_data.to_csv(ana_path + '/all_ratings.csv', sep=',')
+    
 
