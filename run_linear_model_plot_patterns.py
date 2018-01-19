@@ -1,14 +1,7 @@
 """
-=================
-Sliding estimator
-=================
+Get the topographical patternes associated with LinearModel
 
-A sliding estimator fits a logistic legression model for every time point.
-In this example, we contrast the condition 'famous' against 'scrambled'
-using this approach. The end result is an averaging effect across sensors.
-The contrast across different sensors are combined into a single plot.
 
-Results script: :ref:`sphx_glr_auto_examples_statistics_plot_sliding_estimator.py`
 """  # noqa: E501
 
 ###############################################################################
@@ -39,73 +32,84 @@ print(__doc__)
 ana_path = '/home/claire/DATA/Data_Face_House_new_proc'
 results_path = os.path.join(ana_path, 'Analysis', 'Sliding_Estimator')
 
-def run_time_decoding(subject_id, condition1, condition2):
-    print("processing subject: %s (%s vs %s)"
-          % (subject_id, condition1, condition2))
+condition1 = 'imag/face'
+condition2 ='imag/house'
 
-    subject = "S%02d" % subject_id
-    data_path = os.path.join(ana_path, subject,'EEG', 'New_Preproc' )
-    epochs = mne.read_epochs(os.path.join(data_path,
-                             '%s-causal-highpass-2Hz-epo.fif' %subject))
+all_coefs = list()
 
-    # We define the epochs and the labels
-    epochs =epochs[condition1, condition2]
-    epochs.apply_baseline()
-
-    # Let us restrict ourselves to the MEG channels, and also decimate to
-    # make it faster (although we might miss some detail / alias)
-    epochs.pick_types(eeg=True).decimate(2, verbose='error')
-    mne.epochs.combine_event_ids(epochs, ['stim/face', 'stim/house'], {'stim':100}, copy=False)    
-    mne.epochs.combine_event_ids(epochs, ['imag/face', 'imag/house'], {'imag':200}, copy=False)
-    
-    # Get the data and labels
-    X = epochs.get_data()
-    # fit and time decoder
-    le=LabelEncoder()
-    y = le.fit_transform(epochs.events[:, 2])  # target: Audio left or right
-
-    # Use AUC because chance level is same regardless of the class balance
-    clf = make_pipeline(
-        Vectorizer(), 
-        StandardScaler(), 
-        LinearModel(LogisticRegression()))
-        
-        
-    clf.fit(X, y)   
-
-    
-    for name in ('patterns_', 'filters_'):
-        # The `inverse_transform` parameter will call this method on any estimator
-        # contained in the pipeline, in reverse order.
-        coef = get_coef(clf, name, inverse_transform=True)
-        evoked = EvokedArray(coef, epochs.info, tmin=epochs.tmin)
-        evoked.plot_topomap(title='EEG %s' % name[:-1])
-
-
-
-    #cv=StratifiedKFold()
-    
-    #scores, permutation_scores, pvalue = permutation_test_score(estimator = se, X=X, y=y, groups=None, scoring = None, 
-    #    cv=3, n_permutations=100)
-    
-    #print("********* %s Classification score %s (pvalue : %s) ***********" % (subject, scores, pvalue))
-    
-    
-    
-#    # let's save the scores now
-#    cond1 = condition1.replace('/', '-')
-#    cond2 = condition2.replace('/', '-')
-#    a_vs_b = '%s_vs_%s' % (cond1,cond2)
-#    fname_td = os.path.join(results_path, '%s-causal-highpass-2Hz-td-auc-%s.mat'
-#                            % (subject, a_vs_b))
-#    savemat(fname_td, {'scores': scores, 'times': epochs.times})#, 'perm_scores': permutation_scores, 'pval' : pvalue})
-
-
-# Here we go parallel inside the :class:`mne.decoding.SlidingEstimator`
-# so we don't dispatch manually to multiple jobs.
-
+all_evokeds = list()
 
 exclude =[7]
+
+for subject_id in range(1,26):
+    if subject_id in exclude:
+        continue
+    else:
+
+    
+        print("processing subject: %s (%s vs %s)"
+              % (subject_id, condition1, condition2))
+    
+        subject = "S%02d" % subject_id
+        data_path = os.path.join(ana_path, subject,'EEG', 'New_Preproc' )
+        epochs = mne.read_epochs(os.path.join(data_path,
+                                 '%s-causal-highpass-2Hz-epo.fif' %subject))
+    
+        epochs.interpolate_bads()
+        # We define the epochs and the labels
+        epochs =epochs[condition1, condition2]
+        epochs.apply_baseline()
+    
+        # Let us restrict ourselves to the MEG channels, and also decimate to
+        # make it faster (although we might miss some detail / alias)
+        epochs.pick_types(eeg=True).decimate(2, verbose='error')
+        #mne.epochs.combine_event_ids(epochs, ['stim/face', 'stim/house'], {'stim':100}, copy=False)    
+       # mne.epochs.combine_event_ids(epochs, ['imag/face', 'imag/house'], {'imag':200}, copy=False)
+        
+        # Get the data and labels
+        X = epochs.get_data()
+        # fit and time decoder
+        le=LabelEncoder()
+        y = le.fit_transform(epochs.events[:, 2])  # target: Audio left or right
+    
+        # Use AUC because chance level is same regardless of the class balance
+        clf = make_pipeline(
+            Vectorizer(), 
+            StandardScaler(), 
+            LinearModel(LogisticRegression()))
+            
+        
+        time_decod= SlidingEstimator(clf, n_jobs=1, scoring='roc_auc')
+        time_decod.fit(X,y)
+        
+        
+        # The `inverse_transform` parameter will call this method on any estimator
+        # contained in the pipeline, in reverse order.
+        coef = get_coef(time_decod, 'patterns_', inverse_transform=True)
+        
+        
+        all_coefs.append(coef)
+        
+        
+
+        
+all_coefs_ave = np.mean(all_coefs, axis=0)
+
+
+
+
+test = EvokedArray(all_coefs_ave, epochs.info, tmin=epochs.times[0])
+
+
+#use 170
+fig =test.plot_joint(times=[0.,.050,0.100, 0.15, 0.25],title='Group EEG pattern %s %s' % (condition1,condition2))
+
+fig.savefig(os.path.join('/home/claire/DATA/Data_Face_House_new_proc/Analysis/Figures', 'group_pattern-imag-face_imag-house.pdf'), bbox_to_inches='tight')
+
+        
+
+
+
 
 
 #for subject_id in range(1,26):
@@ -122,8 +126,3 @@ exclude =[7]
 
 
 
-for subject_id in range(1,2):
-    if subject_id in exclude:
-        continue
-    else:
-        run_time_decoding(subject_id, 'stim', 'imag')
