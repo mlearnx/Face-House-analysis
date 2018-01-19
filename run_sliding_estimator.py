@@ -28,6 +28,9 @@ from sklearn.pipeline import make_pipeline
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import LabelEncoder
 
+from sklearn.model_selection import permutation_test_score
+
+print(__doc__)
 
 ###############################################################################
 # Then we write a function to do time decoding on one subject
@@ -45,8 +48,7 @@ def run_time_decoding(subject_id, condition1, condition2):
                              '%s-causal-highpass-2Hz-epo.fif' %subject))
 
     # We define the epochs and the labels
-    epochs = mne.concatenate_epochs([epochs[condition1],
-                                    epochs[condition2]])
+    epochs =epochs[condition1, condition2]
     epochs.apply_baseline()
 
     # Let us restrict ourselves to the MEG channels, and also decimate to
@@ -54,26 +56,34 @@ def run_time_decoding(subject_id, condition1, condition2):
     epochs.pick_types(eeg=True).decimate(2, verbose='error')
     mne.epochs.combine_event_ids(epochs, ['stim/face', 'stim/house'], {'stim':100}, copy=False)    
     mne.epochs.combine_event_ids(epochs, ['imag/face', 'imag/house'], {'imag':200}, copy=False)
-
+    
     # Get the data and labels
     X = epochs.get_data()
     # fit and time decoder
     le=LabelEncoder()
-    y = le.fit_transform(epochs.events[:, 2])  # target: Audio left or right
+    y = le.fit_transform(epochs.events[:, 2])  
 
     # Use AUC because chance level is same regardless of the class balance
-    se = SlidingEstimator(
-        make_pipeline(StandardScaler(), LogisticRegression()),
-        scoring='roc_auc', n_jobs=1)
+    se = SlidingEstimator(make_pipeline(StandardScaler(), LogisticRegression()),scoring='roc_auc', n_jobs=1 )
+        #
     scores = cross_val_multiscore(se, X=X, y=y, cv=StratifiedKFold())
 
+    #cv=StratifiedKFold()
+    
+    #scores, permutation_scores, pvalue = permutation_test_score(estimator = se, X=X, y=y, groups=None, scoring = None, 
+    #    cv=3, n_permutations=100)
+    
+    #print("********* %s Classification score %s (pvalue : %s) ***********" % (subject, scores, pvalue))
+    
+    
+    
     # let's save the scores now
     cond1 = condition1.replace('/', '-')
     cond2 = condition2.replace('/', '-')
     a_vs_b = '%s_vs_%s' % (cond1,cond2)
     fname_td = os.path.join(results_path, '%s-causal-highpass-2Hz-td-auc-%s.mat'
                             % (subject, a_vs_b))
-    savemat(fname_td, {'scores': scores, 'times': epochs.times})
+    savemat(fname_td, {'scores': scores, 'times': epochs.times})#, 'perm_scores': permutation_scores, 'pval' : pvalue})
 
 
 # Here we go parallel inside the :class:`mne.decoding.SlidingEstimator`

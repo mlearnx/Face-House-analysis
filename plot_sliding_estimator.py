@@ -31,12 +31,12 @@ from autoreject import set_matplotlib_defaults
 
 data_path = '/home/claire/DATA/Data_Face_House_new_proc/Analysis/Sliding_Estimator'
 
-exclude=[7]
+exclude=[7, 13, 19, 16]
 
 # Now we loop over subjects to load the scores
-a_vs_bs = ['stim_vs_imag']
-scores = {'stim_vs_imag': list()}
-for subject_id in range(1, 26):
+a_vs_bs = ['imag-face_vs_imag-house']
+scores = {'imag-face_vs_imag-house': list()}
+for subject_id in range(12, 26):
     if subject_id in exclude:
         continue
     subject = "S%02d" % subject_id
