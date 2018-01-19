@@ -59,10 +59,15 @@ for subject_id in range(1,26):
     # Mean scores across cross-validation splits
     scores = np.mean(scores, axis=0)
     
+    # get chance level
+    class_balance = np.mean(y == y[0])
+    class_balance = max(class_balance, 1. - class_balance)
+
+    
     # Plot the diagonal (it's exactly the same as the time-by-time decoding above)
     fig, ax = plt.subplots()
     ax.plot(epochs.times, np.diag(scores), label='score')
-    ax.axhline(.5, color='k', linestyle='--', label='chance')
+    ax.axhline(class_balance, color='k', linestyle='--', label='chance')
     ax.set_xlabel('Times')
     ax.set_ylabel('AUC')
     ax.legend()
