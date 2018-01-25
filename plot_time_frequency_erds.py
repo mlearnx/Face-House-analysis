@@ -47,7 +47,7 @@ from matplotlib.colors import LinearSegmentedColormap
 import mne
 from mne.datasets import eegbci
 from mne.io import concatenate_raws, read_raw_edf
-from mne.time_frequency import tfr_multitaper
+from mne.time_frequency import tfr_morlet
 import os
 
 def center_cmap(cmap, vmin, vmax):
@@ -71,48 +71,68 @@ def center_cmap(cmap, vmin, vmax):
     return LinearSegmentedColormap("erds", cdict)
 
 
+
+ana_path = '/home/claire/DATA/Data_Face_House_new_proc'
+results_path = os.path.join(ana_path, 'Analysis', 'Time-Freq')
+
+dataset = ['task', 'clue']
+
+exclude =[7,12]
+
 # load and preprocess data ####################################################
-subject_id=12
 
-subject = 'S%02d' %subject_id
-data_path=  os.path.join('/home/claire/DATA/Data_Face_House_new_proc', subject, 'EEG/Preproc')
+for data in dataset:
+    
+    for subject_id in range(1,2):
+        if subject_id in exclude:
+            continue
+        else:
+    
+            print("processing subject: %s (%s)"
+                  % (subject_id, data))
+        
+            subject = "S%02d" % subject_id
+            data_path = os.path.join(ana_path, subject,'EEG', 'New_Preproc' )
+            epochs = mne.read_epochs(os.path.join(data_path,'%s-%s-fir-highpass-1Hz-epo.fif' %(subject, data)))
+            
+            picks = mne.pick_channels(epochs.info['ch_names'], ['PO8', 'PO7', 'POz'])
 
-fname_in = os.path.join(data_path, '%s-epo.fif' %subject)
-epochs=mne.read_epochs(fname_in)
+            
+            if 'task'in data:
+                event_id = {'stim/face' :101, 'stim/house':102, 'imag/face':201, 'imag/house':202}
+                mne.epochs.combine_event_ids(epochs, ['stim/face', 'stim/house'], {'stim':100}, copy=False)    
+                mne.epochs.combine_event_ids(epochs, ['imag/face', 'imag/house'], {'imag':200}, copy=False)
+                event_ids= {'stim':100, 'imag': 200}
+            elif 'clue'in data:
+                event_id = {'square' :10, 'diam':20}
 
-
-picks = mne.pick_channels(epochs.info['ch_names'], ['PO8', 'PO7', 'POz'])
-
-mne.epochs.combine_event_ids(epochs, ['stim/face', 'stim/house'], {'stim':100}, copy=False)    
-mne.epochs.combine_event_ids(epochs, ['imag/face', 'imag/house'], {'imag':200}, copy=False)
-
-event_ids= {'stim':100, 'imag': 200}
-
-# compute ERDS maps ###########################################################
-fmin= 1.5
-fmax = 100
-freqs = np.exp(np.linspace(log(fmin), log(fmax), 65))
-n_cycles = np.concatenate((np.linspace(1, 8, 47), np.ones(18)*8)) # formule eeglab, allows both low and high freq
-vmin, vmax = -1, 1.5  # set min and max ERDS values in plot
-cmap = center_cmap(plt.cm.RdBu, vmin, vmax)  # zero maps to white
-
-tmin, tmax=-0.2, 1.5
-
-for event in event_ids:
-    power = tfr_multitaper(epochs[event], freqs=freqs, n_cycles=n_cycles,
-                           use_fft=True, return_itc=False, decim=2)
-    power.crop(tmin, tmax)
-
-    fig, ax = plt.subplots(1, 4, figsize=(12, 4),
-                           gridspec_kw={"width_ratios": [10, 10, 10, 1]})
-    for i in range(3):
-        power.plot([i], baseline=[-1, 0], mode="percent", vmin=vmin, vmax=vmax,
-                   cmap=(cmap, False), axes=ax[i], colorbar=False, show=False)
-        ax[i].set_title(epochs.ch_names[i], fontsize=10)
-        ax[i].axvline(0, linewidth=1, color="black", linestyle=":")  # event
-        if i > 0:
-            ax[i].set_ylabel("")
-            ax[i].set_yticklabels("")
-    fig.colorbar(ax[0].collections[0], cax=ax[-1])
-    fig.suptitle("ERDS ({})".format(event))
-    fig.show()
+            
+            
+            # compute ERDS maps ###########################################################
+            fmin= 2
+            fmax = 35 #65
+            freqs = np.logspace(*np.log10([3, 35]), num=15) #np.exp(np.linspace(log(fmin), log(fmax), 25)) #100
+            n_cycles = freqs/2# np.concatenate((np.linspace(1, 8, 7), np.ones(18)*8)) # formule eeglab, allows both low and high freq
+            vmin, vmax = -1, 1.5  # set min and max ERDS values in plot
+            cmap = center_cmap(plt.cm.RdBu, vmin, vmax)  # zero maps to white
+            
+            tmin, tmax=-1, 1.9
+            
+            for event in event_ids:
+                power = tfr_morlet(epochs[event], freqs=freqs, n_cycles=n_cycles,
+                                       use_fft=True, return_itc=False)
+                power.crop(tmin, tmax)
+            
+                fig, ax = plt.subplots(1, 4, figsize=(12, 4),
+                                       gridspec_kw={"width_ratios": [10, 10, 10, 1]})
+                for i in range(3):
+                    power.plot([i], baseline=[-1, 0], mode="percent", vmin=vmin, vmax=vmax,
+                               cmap=(cmap, False), axes=ax[i], colorbar=False, show=False)
+                    ax[i].set_title(epochs.ch_names[i], fontsize=10)
+                    ax[i].axvline(0, linewidth=1, color="black", linestyle=":")  # event
+                    if i > 0:
+                        ax[i].set_ylabel("")
+                        ax[i].set_yticklabels("")
+                fig.colorbar(ax[0].collections[0], cax=ax[-1])
+                fig.suptitle("ERDS ({})".format(event))
+                fig.show()

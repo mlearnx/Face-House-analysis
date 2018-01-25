@@ -40,7 +40,7 @@ ana_path = '/home/claire/DATA/Data_Face_House_new_proc'
 
 exclude = [7,12]
 
-dataset =['task', 'clue'] #'task',
+dataset =['task'] #'task',
 
 for data in dataset:
     for subject_id in range(1,26):
@@ -51,7 +51,7 @@ for data in dataset:
         fname_in = os.path.join(data_path, '%s_%s.bdf' %(subject, data))
     
         dir_save= os.path.join(data_path, 'New_Preproc')
-        #raw_fname_out_1 = os.path.join(dir_save,'%s-noncausal-highpass-1Hz-raw.fif' %subject)
+        #raw_fname_out_1 = os.path.join(dir_save,'%s-%s-noncausal-highpass-1Hz-raw.fif' %(subject,data ))
         
         #raw_fname_out_2 = os.path.join(dir_save,'%s-causal-highpass-2Hz-raw.fif' %subject)
         
@@ -59,7 +59,7 @@ for data in dataset:
     
                                 
         if not op.exists(dir_save):
-            os.makedirs(dir_save)
+            os.makedir(dir_save)
         
         
         
@@ -94,7 +94,7 @@ for data in dataset:
         #raw_one = raw.filter(1.,40, method='iir',  phase= 'zero-double', iir_params=None, n_jobs=1) # 4th order Butterworth filter non causal
         #raw_two = raw.filter(2.,40, method='iir',  phase= 'minimum', iir_params=None, n_jobs=1) # 4th order Butterworth filter causal
         
-        raw_fir = raw.filter(1.,None, fir_design='firwin')
+        raw_fir = raw.filter(1.,40, fir_design='firwin')
         
         #raw_out_1 = raw_fname_out_1
         #raw_out_2 = raw_fname_out_2

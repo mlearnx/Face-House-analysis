@@ -35,7 +35,10 @@ baseline = (None, 0)
 
 exclude = [7, 12]
 
-data = 'task' # 'clue'
+subject_id =4
+
+#data = 'task' # 'clue'
+data = 'clue' # 'clue'
 
 
 if 'task'in data:
@@ -44,14 +47,13 @@ elif 'clue'in data:
     event_id = {'square' :10, 'diam':20}
 
 
-subject_id =1
 
 subject = 'S%02d' %subject_id
 data_path = os.path.join(ana_path, subject , 'EEG', 'New_Preproc')
 
-raw_fname_ica = os.path.join(data_path,'%s-noncausal-highpass-1Hz-raw.fif' %subject)
+#raw_fname_ica = os.path.join(data_path,'%s-noncausal-highpass-1Hz-raw.fif' %subject)
 
-raw_fname_erp = os.path.join(data_path,'%s-causal-highpass-2Hz-raw.fif' %subject)
+#raw_fname_erp = os.path.join(data_path,'%s-causal-highpass-2Hz-raw.fif' %subject)
 
 raw_fname_fir = os.path.join(data_path,'%s-%s-fir-highpass-1Hz-raw.fif' %(subject, data))
 
@@ -59,12 +61,11 @@ raw_fname_fir = os.path.join(data_path,'%s-%s-fir-highpass-1Hz-raw.fif' %(subjec
 
 print(subject)
 
-raw_ica =io.read_raw_fif(raw_fname_ica, preload=True)
-raw_erp =io.read_raw_fif(raw_fname_erp, preload=True)
+raw =io.read_raw_fif(raw_fname_fir, preload=True)
 
-events = mne.read_events(op.join(data_path, '%s-eve.fif' % subject))
+events = mne.read_events(op.join(data_path, '%s-%s-eve.fif' % (subject, data)))
 
-raw_ica.set_eeg_reference(projection=True)
+raw.set_eeg_reference(projection=True)
 
 #    raw_ica.pick_types(misc=False, eeg=True, eog=True)
 #    raw_ica.plot(n_channels=64, scalings={"eeg": 45e-6}, events=events,
@@ -83,44 +84,43 @@ raw_ica.set_eeg_reference(projection=True)
 
 
 # Epoch the data
-print('  Epoching')
+print('Epoching')
 
-tmin = -0.5
-tmax = 1.5
-epochs_ica = mne.Epochs(raw_ica, events, event_id, tmin, tmax,
+tmin = -1
+tmax = 1.9
+epochs = mne.Epochs(raw, events, event_id, tmin, tmax,
                     baseline=(None, 0), reject=None,
                     verbose=False, detrend=0,  preload=True)
                     
-epochs_erp = mne.Epochs(raw_erp, events, event_id, tmin, tmax,
-                    baseline=(None, 0), reject=None,
-                    verbose=False, detrend=0,  preload=True)
 
 print('Decimate')
-epochs_ica.decimate(decim =4) # decim from 1024 to 256
-epochs_erp.decimate(decim=4)
+epochs.decimate(decim =4) # decim from 1024 to 256
 
 print('run autoreject')
    
    
-reject = get_rejection_threshold(epochs_ica)
+reject = get_rejection_threshold(epochs)
 reject
 
-
-
 rej= {'eeg': reject['eeg']}
-epochs_ica.drop_bad(reject=rej)
-print('  Dropped %0.1f%% of epochs' % (epochs_ica.drop_log_stats(),))
 
-reject_erp = get_rejection_threshold(epochs_erp)
-reject_erp
-rej_erp= {'eeg': reject_erp['eeg']}
-epochs_erp.drop_bad(reject=rej_erp)
-print('  Dropped %0.1f%% of epochs' % (epochs_erp.drop_log_stats(),))
+epochs.drop_bad(reject=rej)
+print('  Dropped %0.1f%% of epochs' % (epochs.drop_log_stats(),))
+
+if epochs.drop_log_stats() > 20:
+    print('----- More than 20 % of epochs rejected ---- check manually !!! --')
+    epochs = mne.Epochs(raw, events, event_id, tmin, tmax,
+                    baseline=(None, 0), reject=None,
+                    verbose=False, detrend=0,  preload=True)
+                    
+
+    print('Decimate')
+    epochs.decimate(decim =4) # decim from 1024 to 256
 
 
-epochs_ica.plot(n_channels=64, scalings={'eeg': 45e-6})
-epochs_erp.plot(n_channels=64, scalings={'eeg': 45e-6})
+    epochs.plot(n_channels=64, scalings={'eeg': 45e-6})
 
+print('  Dropped %0.1f%% of epochs' % (epochs.drop_log_stats(),))
 
    #---------------------------------------
    # Compute ICA andf remove EOG artefacts
@@ -130,18 +130,18 @@ print('Run ICA')
 
 n_components=25
 ica = ICA(n_components=n_components, method='fastica')
-ica.fit(epochs_ica)
+ica.fit(epochs)
 ica.plot_components()
 
-picks=mne.pick_types(raw_ica.info, eeg=True, eog=True, exclude='bads')    
+picks=mne.pick_types(raw.info, eeg=True, eog=True, exclude='bads')    
 
 
 
 n_max_eog = 3  # here we bet on finding the vertical EOG components
-eog_epochs = create_eog_epochs(raw_ica)  # get single EOG trials
+eog_epochs = create_eog_epochs(raw)  # get single EOG trials
 eog_average =eog_epochs.average()
 
-eog_inds, scores = ica.find_bads_eog(eog_epochs)  # find via correlation
+eog_inds, scores = ica.find_bads_eog(eog_epochs, ch_name='EOG V L')  # find via correlation
 
 
 ica.plot_scores(scores, exclude=eog_inds)  # look at r scores of components
@@ -150,7 +150,7 @@ ica.plot_scores(scores, exclude=eog_inds)  # look at r scores of components
 ica.plot_sources(eog_average, exclude=eog_inds)  # look at source time course
 
 
-ica.plot_properties(eog_epochs, picks=eog_inds, psd_args={'fmax': 35.},
+ica.plot_properties(eog_epochs, picks=[0,1,2], psd_args={'fmax': 35.},
                     image_args={'sigma': 1.})
 
 print(ica.labels_)
@@ -164,14 +164,13 @@ ica.plot_overlay(eog_average, exclude=eog_inds, show=True)
 
 ica.exclude.extend(eog_inds)
 
+print('Apply ICA on  epochs')
+ica.apply(epochs)
 
-print('Apply ICA on ERP epochs')
-ica.apply(epochs_erp)
-
-ica.save(os.path.join(data_path, subject + '-ica.fif'))
+ica.save(os.path.join(data_path, subject + '-%s-ica.fif' %data))
 
 
-mne.Epochs.save(epochs_erp, os.path.join(data_path, subject + '-causal-highpass-2Hz-epo.fif'))
+mne.Epochs.save(epochs, os.path.join(data_path, subject + '-%s-fir-highpass-1Hz-epo.fif' %data))
 
-del(epochs_ica, epochs_erp, reject, rej, reject_erp, rej_erp,  ica, eog_inds)
+del(epochs, reject, rej, ica, eog_inds)
 plt.close('all')
